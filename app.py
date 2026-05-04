@@ -1,29 +1,26 @@
 import streamlit as st
-import torch
 from PIL import Image
-import torchvision.transforms as transforms
+from ultralytics import YOLO
 
 # -----------------------------
-# PAGE CONFIG
+# PAGE
 # -----------------------------
-st.set_page_config(page_title="AI Image Classifier", layout="centered")
+st.set_page_config(page_title="Agri Text Detection", layout="centered")
 
-st.title("🧠 AI Image Classifier")
-st.write("Upload an image and get prediction from your model")
+st.title("🌾 Multilingual Agri Product Text Analyzer")
 
 # -----------------------------
-# LOAD MODEL
+# LOAD YOLO MODEL
 # -----------------------------
 @st.cache_resource
 def load_model():
-    model = torch.load("best.pt", map_location=torch.device("cpu"))
-    model.eval()
+    model = YOLO("best.pt")   # ✅ correct way
     return model
 
 model = load_model()
 
 # -----------------------------
-# IMAGE UPLOAD
+# UPLOAD IMAGE
 # -----------------------------
 uploaded_file = st.file_uploader(
     "Upload Image",
@@ -31,28 +28,18 @@ uploaded_file = st.file_uploader(
 )
 
 # -----------------------------
-# IMAGE PROCESSING + PREDICTION
+# PREDICTION
 # -----------------------------
-if uploaded_file is not None:
+if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),   # adjust if your model used different size
-        transforms.ToTensor(),
-    ])
+    if st.button("Detect"):
+        results = model(image)
 
-    img_tensor = transform(image).unsqueeze(0)
+        # show result image with boxes
+        result_img = results[0].plot()
+        st.image(result_img, caption="Detection Result")
 
-    if st.button("Predict"):
-        with torch.no_grad():
-            output = model(img_tensor)
-
-            # If classification
-            if len(output.shape) > 1:
-                pred = torch.argmax(output, dim=1).item()
-            else:
-                pred = output.item()
-
-        st.success(f"Prediction: {pred}")
+        # show raw detections
+        st.write(results[0].boxes)
