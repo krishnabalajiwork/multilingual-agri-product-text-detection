@@ -1,8 +1,6 @@
-streamlit==1.57.0
-ultralytics==8.4.46
+streamlit
+ultralytics
 pillow
 opencv-python-headless
-easyocr==1.7.2
+easyocr
 langdetect
-torch
-torchvision
