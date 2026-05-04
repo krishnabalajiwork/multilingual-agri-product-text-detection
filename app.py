@@ -2,15 +2,35 @@ import streamlit as st
 from PIL import Image
 from ultralytics import YOLO
 
-st.title("🌾 Language Detection from Product Text")
+st.set_page_config(page_title="Language Detection")
+st.title("🌾 Language Detection (YOLO Model)")
 
-# Load YOLO model
+# -----------------------------
+# LOAD MODEL
+# -----------------------------
 @st.cache_resource
 def load_model():
     return YOLO("best.pt")
 
 model = load_model()
 
+# -----------------------------
+# CLASS NAMES (EDIT THIS)
+# -----------------------------
+class_names = [
+    "English",
+    "Hindi",
+    "Telugu",
+    "Tamil",
+    "Kannada",
+    "Gujarati",
+    "Malayalam",
+    "Bengali"
+]
+
+# -----------------------------
+# UPLOAD IMAGE
+# -----------------------------
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
 if uploaded_file:
@@ -21,30 +41,19 @@ if uploaded_file:
 
         results = model(image, conf=0.5, iou=0.4)
 
-        try:
-            import easyocr
-            from langdetect import detect
+        st.subheader("Detected Languages:")
 
-            reader = easyocr.Reader(['en','hi','te','ta'])
+        boxes = results[0].boxes
 
-            st.subheader("Detected Languages:")
+        for box in boxes:
+            cls_id = int(box.cls)
+            conf = float(box.conf)
 
-            for box in results[0].boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
+            if conf > 0.5:
+                lang = class_names[cls_id]
 
-                # Crop detected region
-                crop = image.crop((x1, y1, x2, y2))
+                st.write(f"🌐 {lang} ({conf:.2f})")
 
-                # OCR on cropped region
-                ocr_result = reader.readtext(crop)
-
-                for (_, text, conf) in ocr_result:
-                    if conf > 0.4 and len(text.strip()) > 2:
-                        try:
-                            lang = detect(text)
-                            st.write(f"🧾 '{text}' → 🌐 {lang}")
-                        except:
-                            st.write(f"🧾 '{text}' → Unknown")
-
-        except:
-            st.error("OCR not ready. Refresh once.")
+        # Show image with boxes
+        result_img = results[0].plot()[:, :, ::-1]
+        st.image(result_img, caption="Detection Result")
