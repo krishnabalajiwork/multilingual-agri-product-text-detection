@@ -2,69 +2,49 @@ import streamlit as st
 from PIL import Image
 from ultralytics import YOLO
 
-st.set_page_config(page_title="Agri Text Analyzer")
-st.title("🌾 Multilingual Text Detection App")
+st.title("🌾 Language Detection from Product Text")
 
-# -----------------------------
-# Load YOLO
-# -----------------------------
+# Load YOLO model
 @st.cache_resource
-def load_yolo():
+def load_model():
     return YOLO("best.pt")
 
-model = load_yolo()
+model = load_model()
 
-# -----------------------------
-# Upload image
-# -----------------------------
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image)
 
-    if st.button("Analyze"):
+    if st.button("Detect Language"):
 
-        # -----------------------------
-        # YOLO Detection
-        # -----------------------------
-        st.subheader("🔍 Detection")
         results = model(image, conf=0.5, iou=0.4)
-
-        result_img = results[0].plot()[:, :, ::-1]
-        st.image(result_img)
-
-        # -----------------------------
-        # SAFE OCR LOAD (IMPORTANT)
-        # -----------------------------
-        st.subheader("📝 Extracting Text...")
 
         try:
             import easyocr
-            reader = easyocr.Reader(['en','hi','te','ta'])
-            ocr_results = reader.readtext(image)
-
-            texts = []
-            for (bbox, text, conf) in ocr_results:
-                if conf > 0.4:
-                    st.write(f"{text} ({conf:.2f})")
-                    texts.append(text)
-
-            # -----------------------------
-            # Language Detection
-            # -----------------------------
-            st.subheader("🌐 Language Detection")
-
             from langdetect import detect
 
-            for text in texts:
-                try:
-                    lang = detect(text)
-                    st.write(f"{text} → {lang}")
-                except:
-                    st.write(f"{text} → Unknown")
+            reader = easyocr.Reader(['en','hi','te','ta'])
 
-        except Exception as e:
-            st.error("❌ OCR not ready yet. Please refresh in 10–20 seconds.")
+            st.subheader("Detected Languages:")
 
-        st.success("✅ Done")
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+                # Crop detected region
+                crop = image.crop((x1, y1, x2, y2))
+
+                # OCR on cropped region
+                ocr_result = reader.readtext(crop)
+
+                for (_, text, conf) in ocr_result:
+                    if conf > 0.4 and len(text.strip()) > 2:
+                        try:
+                            lang = detect(text)
+                            st.write(f"🧾 '{text}' → 🌐 {lang}")
+                        except:
+                            st.write(f"🧾 '{text}' → Unknown")
+
+        except:
+            st.error("OCR not ready. Refresh once.")
