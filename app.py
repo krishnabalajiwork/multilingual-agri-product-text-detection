@@ -2,44 +2,28 @@ import streamlit as st
 from PIL import Image
 from ultralytics import YOLO
 
-# -----------------------------
-# PAGE
-# -----------------------------
-st.set_page_config(page_title="Agri Text Detection", layout="centered")
+st.set_page_config(page_title="Agri Text Detection")
 
 st.title("🌾 Multilingual Agri Product Text Analyzer")
 
-# -----------------------------
-# LOAD YOLO MODEL
-# -----------------------------
 @st.cache_resource
 def load_model():
-    model = YOLO("best.pt")   # ✅ correct way
-    return model
+    return YOLO("best.pt")
 
 model = load_model()
 
-# -----------------------------
-# UPLOAD IMAGE
-# -----------------------------
-uploaded_file = st.file_uploader(
-    "Upload Image",
-    type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
-# -----------------------------
-# PREDICTION
-# -----------------------------
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    st.image(image)
 
     if st.button("Detect"):
         results = model(image)
 
-        # show result image with boxes
-        result_img = results[0].plot()
-        st.image(result_img, caption="Detection Result")
+        # safer display (no cv2 issues)
+        result_img = results[0].plot()[:, :, ::-1]
+        st.image(result_img)
 
-        # show raw detections
+        st.write("Detections:")
         st.write(results[0].boxes)
