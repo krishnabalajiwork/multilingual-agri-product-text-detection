@@ -2,18 +2,6 @@ import streamlit as st
 from PIL import Image
 from ultralytics import YOLO
 
-# Safe import for easyocr
-try:
-    import easyocr
-except:
-    easyocr = None
-
-# Safe import for langdetect
-try:
-    from langdetect import detect
-except:
-    detect = None
-
 st.set_page_config(page_title="Agri Text Analyzer")
 st.title("🌾 Multilingual Text Detection App")
 
@@ -27,24 +15,13 @@ def load_yolo():
 model = load_yolo()
 
 # -----------------------------
-# Load OCR safely
-# -----------------------------
-@st.cache_resource
-def load_ocr():
-    if easyocr is None:
-        return None
-    return easyocr.Reader(['en','hi','te','ta'])
-
-reader = load_ocr()
-
-# -----------------------------
 # Upload image
 # -----------------------------
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image")
+    st.image(image)
 
     if st.button("Analyze"):
 
@@ -58,12 +35,13 @@ if uploaded_file:
         st.image(result_img)
 
         # -----------------------------
-        # OCR
+        # SAFE OCR LOAD (IMPORTANT)
         # -----------------------------
-        if reader is None:
-            st.error("❌ EasyOCR not installed properly")
-        else:
-            st.subheader("📝 Extracted Text")
+        st.subheader("📝 Extracting Text...")
+
+        try:
+            import easyocr
+            reader = easyocr.Reader(['en','hi','te','ta'])
             ocr_results = reader.readtext(image)
 
             texts = []
@@ -75,15 +53,18 @@ if uploaded_file:
             # -----------------------------
             # Language Detection
             # -----------------------------
-            if detect is None:
-                st.warning("⚠️ Language detection not available")
-            else:
-                st.subheader("🌐 Language Detection")
-                for text in texts:
-                    try:
-                        lang = detect(text)
-                        st.write(f"{text} → {lang}")
-                    except:
-                        st.write(f"{text} → Unknown")
+            st.subheader("🌐 Language Detection")
+
+            from langdetect import detect
+
+            for text in texts:
+                try:
+                    lang = detect(text)
+                    st.write(f"{text} → {lang}")
+                except:
+                    st.write(f"{text} → Unknown")
+
+        except Exception as e:
+            st.error("❌ OCR not ready yet. Please refresh in 10–20 seconds.")
 
         st.success("✅ Done")
