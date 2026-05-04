@@ -2,5 +2,3 @@ streamlit
 ultralytics
 pillow
 opencv-python-headless
-easyocr
-langdetect
